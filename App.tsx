@@ -32,6 +32,9 @@ import PurchaseReviewScreen from './src/screens/PlaceOrder/PurchaseReviewScreen'
 import AddItemAndCategory from './src/Health/AddItemAndCategory';
 import AddMedicine from './src/Health/AddMedicine';
 import OrderHistory from './src/Order/OrderHistory';
+import Members from './src/Health/Members/Members'
+import PathologyForm from './src/Health/Pathologies/PathologyForm';
+import PathologyList from './src/Health/Pathologies/PathologyList';
 
 enableScreens();
 
@@ -122,6 +125,21 @@ function App() {
             <Stack.Screen
               name="OrderHistory"
               component={OrderHistory}
+              options={{ headerShown: false }} 
+            />
+            <Stack.Screen
+              name="Members"
+              component={Members}
+              options={{ headerShown: false }} 
+            />
+            <Stack.Screen
+              name="PathologyForm"
+              component={PathologyForm}
+              options={{ headerShown: false }} 
+            />
+            <Stack.Screen
+              name="PathologyList"
+              component={PathologyList}
               options={{ headerShown: false }} 
             />
           </Stack.Navigator>

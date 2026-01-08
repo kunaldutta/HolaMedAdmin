@@ -12,10 +12,11 @@ import {
   TouchableOpacity,
   PermissionsAndroid,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import Geolocation from 'react-native-geolocation-service';
+import Geolocation from '@react-native-community/geolocation';
 
 const PathologyForm = ({ navigation, rout }) => {
   const [form, setForm] = useState({
@@ -27,6 +28,7 @@ const PathologyForm = ({ navigation, rout }) => {
   });
 
   const [image, setImage] = useState(null);
+  const [loading, setLoading] = useState(false); // 🔄 loader state
 
   const handleChange = (name, value) => {
     setForm(prev => ({ ...prev, [name]: value }));
@@ -43,7 +45,7 @@ const PathologyForm = ({ navigation, rout }) => {
   };
 
   const requestLocationPermission = async () => {
-    if (Platform.OS === 'ios') { return true; }
+    if (Platform.OS === 'ios') return true;
 
     try {
       const granted = await PermissionsAndroid.request(
@@ -58,7 +60,6 @@ const PathologyForm = ({ navigation, rout }) => {
 
   const getCurrentLocation = async () => {
     const hasPermission = await requestLocationPermission();
-    console.log('Location permission granted:', hasPermission);
     if (!hasPermission) {
       Alert.alert('Permission denied', 'Location permission is required');
       return;
@@ -72,7 +73,6 @@ const PathologyForm = ({ navigation, rout }) => {
         Alert.alert('Location Captured', latLongStr);
       },
       error => {
-        console.error('Location Error:', error);
         Alert.alert('Location Error', error.message);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
@@ -80,42 +80,42 @@ const PathologyForm = ({ navigation, rout }) => {
   };
 
   const uploadData = async () => {
-  const data = new FormData();
+    const data = new FormData();
 
-  Object.entries(form).forEach(([key, value]) => {
-    data.append(key, value);
-  });
-
-  if (image) {
-    data.append('image', {
-      uri: image.uri,
-      name: image.fileName || 'upload.jpg',
-      type: image.type || 'image/jpeg',
+    Object.entries(form).forEach(([key, value]) => {
+      data.append(key, value);
     });
-  }
 
-  try {
-    const res = await fetch('https://developersdumka.in/ourmarket/Medicine/upload_pathology.php', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      body: data,
-    });
-    console.log('Response status:', res.status);
-    console.log('Response headers:', JSON.stringify(res.headers.map));
+    if (image) {
+      data.append('image', {
+        uri: image.uri,
+        name: image.fileName || 'upload.jpg',
+        type: image.type || 'image/jpeg',
+      });
+    }
 
-    const text = await res.text(); // first read raw response
-    console.log('Raw response:', text);
+    try {
+      setLoading(true); // 🔄 show loader
 
-    const result = JSON.parse(text); // then try to parse
-    Alert.alert(result.message);
-  } catch (error) {
-    console.error('Upload error:', error);
-    Alert.alert('Upload failed');
-  }
-};
+      const res = await fetch(
+        'https://developersdumka.in/ourmarket/Medicine/upload_pathology.php',
+        {
+          method: 'POST',
+          body: data, // ❗ do not set Content-Type manually
+        }
+      );
 
+      const text = await res.text();
+      const result = JSON.parse(text);
+
+      Alert.alert('Success', result.message);
+    } catch (error) {
+      console.error('Upload error:', error);
+      Alert.alert('Upload failed');
+    } finally {
+      setLoading(false); // ✅ hide loader
+    }
+  };
 
   return (
     <SafeAreaView style={styles.containemain}>
@@ -136,7 +136,6 @@ const PathologyForm = ({ navigation, rout }) => {
         <Text style={styles.label}>Address Line 2</Text>
         <TextInput style={styles.input} onChangeText={t => handleChange('address2', t)} />
 
-
         {form.lat_long ? (
           <Text style={styles.locationDisplay}>📍 Current Location</Text>
         ) : null}
@@ -149,6 +148,7 @@ const PathologyForm = ({ navigation, rout }) => {
         />
 
         <Button title="Choose Image" onPress={chooseImage} />
+
         {image && (
           <Image
             source={{ uri: image.uri }}
@@ -156,8 +156,21 @@ const PathologyForm = ({ navigation, rout }) => {
           />
         )}
 
-        <Button title="Upload Data" onPress={uploadData} color="green" />
+        <Button
+          title={loading ? 'Uploading...' : 'Upload Data'}
+          onPress={uploadData}
+          color="green"
+          disabled={loading}
+        />
       </ScrollView>
+
+      {/* 🔄 Loader Overlay */}
+      {loading && (
+        <View style={styles.loaderOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Uploading...</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -199,26 +212,29 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    textAlign: 'center',
     color: 'black',
     flex: 1,
-  },
-  locationBtn: {
-    backgroundColor: '#007AFF',
-    padding: 10,
-    borderRadius: 6,
-    marginTop: 10,
-    marginBottom: 5,
-    alignItems: 'center',
-  },
-  locationText: {
-    color: '#fff',
-    fontWeight: '600',
+    textAlign: 'center',
   },
   locationDisplay: {
     marginBottom: 10,
     color: 'gray',
     fontStyle: 'italic',
+  },
+  loaderOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#fff',
+    fontSize: 16,
   },
 });
 
